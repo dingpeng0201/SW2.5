@@ -20,7 +20,7 @@
     }
     .container {
       max-width: 1100px;
-      margin: 2.0rem auto;
+      margin: 0 auto;
       background: #fff;
       padding: 2rem;
       border-radius: 0.5rem;
@@ -89,7 +89,6 @@
       display: none; /* 初期状態は折りたたみ */
       overflow: hidden;
     }
-    /* .course は横並び。gap で要素間の隙間を最小限に */
     .course {
       display: flex;
       align-items: center;
@@ -108,18 +107,16 @@
       transform: scale(1.2);
       cursor: pointer;
     }
-    /* ラベル全体をインライン要素にし、改行を抑える */
     .course label {
       cursor: pointer;
       display: inline-flex;
-      flex-direction: column;
-      justify-content: center;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: baseline;
     }
-    /* strong と small の間隔を最小化 */
     .course label strong {
-      display: inline;
-      margin-bottom: 0;  /* 余計なマージンをなくす */
       font-size: 1rem;
+      margin-right: 0.2em;
     }
     .course label small {
       font-size: 0.875rem;
@@ -209,12 +206,12 @@
     <header>
       <h1>履修登録システム</h1>
       <p class="counter" id="selectedCount">選択中の科目：0 / 12</p>
-      <p class="dept-info">表示する学科／一般教養を選択してください</p>
+      <p class="dept-info">表示する学科を選択してください</p>
     </header>
     
     <div class="dept-select">
       <select id="deptSelect">
-        <option value="">-- 学科／一般教養を選択 --</option>
+        <option value="">-- 学科を選択 --</option>
       </select>
     </div>
     
@@ -259,12 +256,16 @@
         .catch(error => console.error("CSV読み込みエラー:", error));
     }
     
-    // ユニークな学科／一般教養の値を取得し、ドロップダウンに反映する
+    // ユニークな学科の値を取得し、「一般教養」を除外してドロップダウンに反映
     function populateDeptSelect() {
       const deptSelect = document.getElementById("deptSelect");
       // CSV内のヘッダーは「学科」としている前提
-      const depts = [...new Set(courses.map(course => course["学科"]))];
-      depts.forEach(dept => {
+      const allDepts = [...new Set(courses.map(course => course["学科"]))];
+      
+      // 一般教養を除外
+      const filteredDepts = allDepts.filter(dept => dept !== "一般教養");
+      
+      filteredDepts.forEach(dept => {
         const option = document.createElement("option");
         option.value = dept;
         option.textContent = dept;
@@ -293,16 +294,19 @@
       });
     }
     
-    // 選択された学科／一般教養に応じて科目をレンダリング
-    function renderCourses(filterDept) {
-      const courseListDiv = document.getElementById("courseList");
-      courseListDiv.innerHTML = "";
+    // 指定した「学科」をもつ科目をカテゴリごとにまとめて表示する関数
+    function renderDepartment(dept, container) {
+      // dept の科目を取得
+      const filteredCourses = courses.filter(course => course["学科"] === dept);
+      if (filteredCourses.length === 0) return;  // 該当科目が無い場合は表示しない
       
-      // filterDept が設定されていなければ何も表示しない
-      if (!filterDept) return;
+      // 部門ブロック
+      const deptDiv = document.createElement("div");
+      deptDiv.className = "department";
       
-      // 「学科」フィールドでフィルタ
-      const filteredCourses = courses.filter(course => course["学科"] === filterDept);
+      const deptTitle = document.createElement("h2");
+      deptTitle.textContent = dept;
+      deptDiv.appendChild(deptTitle);
       
       // カテゴリごとにグループ化
       const groupedByCategory = filteredCourses.reduce((acc, course) => {
@@ -312,14 +316,7 @@
         return acc;
       }, {});
       
-      // 表示用に作成
-      const deptDiv = document.createElement("div");
-      deptDiv.className = "department";
-      const deptTitle = document.createElement("h2");
-      deptTitle.textContent = filterDept;
-      deptDiv.appendChild(deptTitle);
-      
-      // 各カテゴリ毎にトグル可能な見出しとリストを作成
+      // カテゴリ別にトグル表示
       for (const cat in groupedByCategory) {
         const categoryHeader = document.createElement("div");
         categoryHeader.className = "category-header";
@@ -328,7 +325,6 @@
         
         const courseContainer = document.createElement("div");
         courseContainer.className = "course-container";
-        // 初期状態は非表示（トグルが閉じた状態）
         courseContainer.style.display = "none";
         
         groupedByCategory[cat].forEach((course, index) => {
@@ -345,7 +341,6 @@
           
           const label = document.createElement("label");
           label.htmlFor = checkbox.id;
-          /* strong と small を改行なし + 最小限の隙間に */
           label.innerHTML = `
             <strong>${course["科目名"]}</strong>
             <small>${course["説明"]}</small>
@@ -357,9 +352,24 @@
         });
         deptDiv.appendChild(courseContainer);
         
+        // トグル設定
         setupCategoryToggle(categoryHeader, courseContainer);
       }
-      courseListDiv.appendChild(deptDiv);
+      container.appendChild(deptDiv);
+    }
+    
+    // メインの描画処理：選択された学科を表示し、その下に「一般教養」も表示する
+    function renderCourses(selectedDept) {
+      const courseListDiv = document.getElementById("courseList");
+      courseListDiv.innerHTML = "";
+      
+      // 選択された学科を表示
+      if (selectedDept) {
+        renderDepartment(selectedDept, courseListDiv);
+      }
+      // その下に「一般教養」を表示（存在すれば）
+      renderDepartment("一般教養", courseListDiv);
+      
       updateSelectedCount();
     }
     
@@ -399,7 +409,7 @@
       downloadLink.style.display = "inline-block";
     }
     
-    // 部門選択の変更イベント
+    // ドロップダウンの変更イベント
     document.getElementById("deptSelect").addEventListener("change", (e) => {
       renderCourses(e.target.value);
     });
