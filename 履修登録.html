@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>履修登録システム</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    /* Reset・基本設定 */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      line-height: 1.6;
+      padding: 1rem;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 2rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 0.25rem 0.5rem rgba(0,0,0,0.1);
+    }
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: #2c3e50;
+    }
+    .counter, .dept-info {
+      font-size: 1.125rem;
+      color: #16a085;
+      margin-bottom: 0.5rem;
+    }
+    .dept-select {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .dept-select select {
+      font-size: 1rem;
+      padding: 0.5rem 0.75rem;
+      border: 0.0625rem solid #ccc;
+      border-radius: 0.3125rem;
+    }
+    .department {
+      margin-top: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 0.0625rem solid #e0e0e0;
+    }
+    .department h2 {
+      background: #2c3e50;
+      color: #fff;
+      padding: 0.625rem;
+      border-radius: 0.3125rem;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .category-header {
+      font-size: 1.125rem;
+      margin: 1rem 0 0.5rem 0.625rem;
+      color: #34495e;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      padding-left: 1.25rem;
+    }
+    /* トグル用のアイコン */
+    .category-header::before {
+      content: "\25BC";
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-size: 1rem;
+      transition: transform 0.2s ease;
+    }
+    .category-header.collapsed::before {
+      transform: rotate(-90deg);
+    }
+    .course-container {
+      margin-left: 0.625rem;
+      display: none; /* 初期状態は折りたたみ */
+      overflow: hidden;
+    }
+    .course {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem; /* checkbox とテキストの間隔 */
+      margin: 0.5rem 0.625rem;
+      padding: 0.75rem;
+      background: #f9f9f9;
+      border: 0.0625rem solid #ddd;
+      border-radius: 0.3125rem;
+      transition: background 0.2s ease;
+    }
+    .course:hover {
+      background: #eef6f9;
+    }
+    .course input[type="checkbox"] {
+      transform: scale(1.2);
+      cursor: pointer;
+    }
+    .course label {
+      cursor: pointer;
+      display: inline-flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: baseline;
+    }
+    .course label strong {
+      font-size: 1rem;
+      margin-right: 0.2em; /* 少しだけ余白 */
+    }
+    .course label small {
+      font-size: 0.875rem;
+      color: #555;
+      line-height: 1.3;
+      margin: 0;
+      padding: 0;
+      display: inline;
+    }
+    .warning {
+      color: #e74c3c;
+      font-weight: bold;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    .output-section {
+      text-align: center;
+      margin-top: 2rem;
+    }
+    .output-section button {
+      background: #16a085;
+      border: none;
+      color: #fff;
+      padding: 0.75rem 1.25rem;
+      font-size: 1rem;
+      border-radius: 0.3125rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .output-section button:hover {
+      background: #138d75;
+    }
+    .output-section a {
+      display: inline-block;
+      margin-top: 1rem;
+      text-decoration: none;
+      font-size: 1rem;
+      color: #16a085;
+    }
+    
+    /* レスポンシブ対応 */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+      header h1 {
+        font-size: 1.5rem;
+      }
+      .counter, .dept-info {
+        font-size: 1rem;
+      }
+      .dept-select select {
+        font-size: 0.9rem;
+        padding: 0.5rem;
+      }
+      .department h2 {
+        font-size: 1.25rem;
+        padding: 0.5rem;
+      }
+      .category-header {
+        font-size: 1rem;
+        margin: 0.75rem 0 0.5rem 1rem;
+      }
+      .course {
+        margin: 0.5rem 0.5rem;
+        padding: 0.5rem;
+        gap: 0.3rem;
+      }
+      .course input[type="checkbox"] {
+        transform: scale(1);
+      }
+      .course label strong {
+        font-size: 0.95rem;
+      }
+      .course label small {
+        font-size: 0.8rem;
+      }
+      .output-section button {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>履修登録システム</h1>
+      <p class="counter" id="selectedCount">選択中の科目：0 / 12</p>
+      <p class="dept-info">表示する学科を選択してください</p>
+    </header>
+    
+    <div class="dept-select">
+      <select id="deptSelect">
+        <option value="">-- 学科を選択 --</option>
+      </select>
+    </div>
+    
+    <!-- 科目一覧表示領域 -->
+    <div id="courseList"></div>
+    <p class="warning" id="warningMsg" style="display:none;">※12科目を超える選択はできません。</p>
+    
+    <div class="output-section">
+      <button id="exportBtn">CSV出力</button>
+      <a id="downloadLink" style="display:none;" href="#" download="selected_courses.csv">CSVファイルをダウンロード</a>
+    </div>
+  </div>
+
+  <script>
+    let courses = []; // CSVから読み込んだ科目データ
+
+    // CSV をパースするシンプルな関数（※フィールド内にカンマが含まれる場合は対応していません）
+    function parseCSV(csvText) {
+      const lines = csvText.trim().split("\n");
+      const result = [];
+      const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(",").map(v => v.trim().replace(/^"|"$/g, ""));
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header] = values[index];
+        });
+        result.push(obj);
+      }
+      return result;
+    }
+    
+    // CSVファイルを読み込む
+    function loadCSV() {
+      fetch("履修登録.csv")
+        .then(response => response.text())
+        .then(text => {
+          courses = parseCSV(text);
+          populateDeptSelect();
+        })
+        .catch(error => console.error("CSV読み込みエラー:", error));
+    }
+    
+    // ドロップダウンには「一般教養」と「魔法教養」を除外
+    function populateDeptSelect() {
+      const deptSelect = document.getElementById("deptSelect");
+      const allDepts = [...new Set(courses.map(course => course["学科"]))];
+      const filteredDepts = allDepts.filter(dept => dept !== "一般教養" && dept !== "魔法教養");
+      filteredDepts.forEach(dept => {
+        const option = document.createElement("option");
+        option.value = dept;
+        option.textContent = dept;
+        deptSelect.appendChild(option);
+      });
+    }
+    
+    // 選択中の科目数表示を更新する
+    function updateSelectedCount() {
+      const checkedCount = document.querySelectorAll("input[type='checkbox']:checked").length;
+      document.getElementById("selectedCount").textContent = `選択中の科目：${checkedCount} / 12`;
+    }
+    
+    // 各カテゴリのトグル設定
+    function setupCategoryToggle(categoryHeader, courseContainer) {
+      categoryHeader.classList.add("collapsed");
+      categoryHeader.addEventListener("click", () => {
+        if (courseContainer.style.display === "none") {
+          courseContainer.style.display = "block";
+          categoryHeader.classList.remove("collapsed");
+        } else {
+          courseContainer.style.display = "none";
+          categoryHeader.classList.add("collapsed");
+        }
+      });
+    }
+    
+    // 指定した学科の科目をグループ別にレンダリングする
+    function renderDepartment(dept, container) {
+      const filteredCourses = courses.filter(course => course["学科"] === dept);
+      if (filteredCourses.length === 0) return;
+      
+      const deptDiv = document.createElement("div");
+      deptDiv.className = "department";
+      const deptTitle = document.createElement("h2");
+      deptTitle.textContent = dept;
+      deptDiv.appendChild(deptTitle);
+      
+      const groupedByCategory = filteredCourses.reduce((acc, course) => {
+        const cat = course["カテゴリ"];
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(course);
+        return acc;
+      }, {});
+      
+      for (const cat in groupedByCategory) {
+        const categoryHeader = document.createElement("div");
+        categoryHeader.className = "category-header";
+        categoryHeader.textContent = cat;
+        deptDiv.appendChild(categoryHeader);
+        
+        const courseContainer = document.createElement("div");
+        courseContainer.className = "course-container";
+        courseContainer.style.display = "none";
+        
+        groupedByCategory[cat].forEach((course, index) => {
+          const courseDiv = document.createElement("div");
+          courseDiv.className = "course";
+          
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.id = `${course["学科"]}_${course["カテゴリ"]}_${index}`;
+          checkbox.addEventListener("change", (e) => {
+            checkSelectionLimit(e);
+            updateSelectedCount();
+          });
+          
+          const label = document.createElement("label");
+          label.htmlFor = checkbox.id;
+          label.innerHTML = `
+            <strong>${course["科目名"]}</strong>
+            <small>${course["説明"]}</small>
+          `;
+          
+          courseDiv.appendChild(checkbox);
+          courseDiv.appendChild(label);
+          courseContainer.appendChild(courseDiv);
+        });
+        deptDiv.appendChild(courseContainer);
+        setupCategoryToggle(categoryHeader, courseContainer);
+      }
+      container.appendChild(deptDiv);
+    }
+    
+    // メインの描画処理：選択された学科の科目＋
+    // もし選択学科が「操霊学科」または「神聖学科」なら、魔法教養も表示
+    // その下に必ず一般教養を表示
+    function renderCourses(selectedDept) {
+      const courseListDiv = document.getElementById("courseList");
+      courseListDiv.innerHTML = "";
+      
+      if (selectedDept) {
+        renderDepartment(selectedDept, courseListDiv);
+        if (selectedDept === "操霊学科" || selectedDept === "神聖学科") {
+          renderDepartment("魔法教養", courseListDiv);
+        }
+      }
+      renderDepartment("一般教養", courseListDiv);
+      updateSelectedCount();
+    }
+    
+    // 12科目を超える選択制限
+    function checkSelectionLimit(e) {
+      const checked = document.querySelectorAll("input[type='checkbox']:checked");
+      if (checked.length > 12) {
+        e.target.checked = false;
+        document.getElementById("warningMsg").style.display = "block";
+        setTimeout(() => {
+          document.getElementById("warningMsg").style.display = "none";
+        }, 2000);
+      }
+    }
+    
+    // CSV生成とダウンロード処理（選択された科目のみ）
+    function exportCSV() {
+      const checked = document.querySelectorAll("input[type='checkbox']:checked");
+      if (checked.length === 0) {
+        alert("科目が選択されていません。");
+        return;
+      }
+      let csvContent = "科目名,学科,カテゴリ,説明\n";
+      checked.forEach(checkbox => {
+        const courseLabel = checkbox.nextSibling.textContent;
+        const course = courses.find(c => c["科目名"] === courseLabel.trim().split("\n")[0]);
+        if (course) {
+          csvContent += `"${course["科目名"]}","${course["学科"]}","${course["カテゴリ"]}","${course["説明"]}"\n`;
+        }
+      });
+      
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const downloadLink = document.getElementById("downloadLink");
+      downloadLink.href = url;
+      downloadLink.style.display = "inline-block";
+    }
+    
+    document.getElementById("deptSelect").addEventListener("change", (e) => {
+      renderCourses(e.target.value);
+    });
+    
+    document.getElementById("exportBtn").addEventListener("click", exportCSV);
+    
+    // 初期化：CSV読み込み
+    loadCSV();
+  </script>
+</body>
+</html>
